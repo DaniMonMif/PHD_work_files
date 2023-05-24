@@ -1,0 +1,137 @@
+---
+title: "Mdanilovaite_ch21"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+## 21.7 7 Exercise
+
+Consider the glass fragments data from the book’s website. Let *Y* be refractive index and let *X* be aluminum content (the fourth variable).
+
+a. Do a nonparametric regression to fit the model *Y = f(x) +* \epsilon using the cosine basis method. The data are not on a regular grid. Ignore this when estimating the function. (But do sort the data first according to *x*). Provide a function estimate, an estimate of the risk, and a confidence band.
+
+b. Use the wavelet method to estimate *f*.
+
+```{r 21_7_7, echo=FALSE}
+# ini libraries:
+library('stats')
+
+# read dataset and select columns:
+df <- read.table( "https://www.stat.cmu.edu/~larry/all-of-statistics/=data/glass.dat", header = TRUE, fill = TRUE)
+
+df = subset(df, select = -c(Na,Mg,Si,K,Ca,Ba,Fe,type) )
+df <- df[order(df[,2]),] # order by x
+
+x_sample = df[1:(2^trunc(log(length(df[,2]),2))),2]
+step = ((max(df[,2]) - min(df[,2])) / 255)
+t = seq(min(df[,2]), max(df[,2]), by=step)
+
+# a ============================================================================
+# Cosine basis function
+phi_j <- function(j, x) 
+  {
+    if (j == 1)
+      {
+        result <- rep(1, length(x))
+      }
+    else 
+      {
+        result <- sqrt(2) * cos((j - 1) * pi * x)
+      }
+  }
+
+n = nrow(df)
+alpha = 0.05 # significance level
+
+# normalize
+X_scaled <- (df[,2] - min(df[,2])) / (max(df[,2]) - min(df[,2]))
+
+beta_hat = rep(0, n)
+for (j in 1:(n+1))
+  {
+    beta_hat[j - 1] <- sum(t(df[,1]) * phi_j(j, X_scaled)) / n
+  } 
+
+k = round(ceiling(n / 4), digits = 0)
+range <- seq(from = length(beta_hat) - k , to = length(beta_hat), by = 1)
+sigma2_hat = sum(beta_hat[range]**2) * (n / k)
+
+risk_hat = rep(1, n)
+
+for (J in 2:(n+1))
+  {
+      range <- seq(J-1, to = n, by = 1)
+      risk_hat[J - 1] = J * sigma2_hat/n + sum(pmax(beta_hat[range]**2 - sigma2_hat/n, 0))
+  }
+
+J_hat = which.min(risk_hat) + 2
+
+tau_hat = sigma2_hat * sqrt((2 * J_hat / n) * (1 + J_hat / k))
+z_alpha = qnorm(1 - alpha / 2)
+c = sqrt(2 * J * ((z_alpha * tau_hat / sqrt(n)) + (J_hat * sigma2_hat / n)))
+
+# normalize
+xx = (t - min(df[,2])) / (max(df[,2]) - min(df[,2]))
+r_hat = rep(0, length(xx))
+r_lower = rep(0, length(xx))
+r_upper = rep(0, length(xx))
+
+# risk estimation
+for (j in 2:(J_hat+1))
+{ 
+  tmp = beta_hat[j - 1] * phi_j(j,xx)
+    for (i in 1:length(xx))
+    {
+      r_hat[i] = r_hat[i] + tmp[i]
+    }
+}
+  
+# lower bound
+for (i in 1:length(r_hat))
+{
+  r_lower[i] <- r_hat[i] - c
+}
+
+# upper bound
+for (i in 1:length(r_hat))
+{
+  r_upper[i] <- r_hat[i] + c
+}
+
+# display plots
+plot(df[,2],df[,1], xlim=c(0,max(t)), ylim=c(min(r_lower)-2,max(r_upper)+2), main="Nonparametric regression fit", xlab = "RI", ylab = "AL")
+lines(sort(t),r_hat,col="red")
+lines(sort(t),r_upper,col="blue")
+lines(sort(t),r_lower,col="green")
+
+legend(x = 2.8, y = 15, # Coordinates
+       legend = c("r_hat", "CI upper bound", "CI lower bound", "Data point"),
+ col=c("red", "blue", "green", "black"), lty=1, cex=0.6)
+
+# b ============================================================================
+# ini libraries
+library("wavethresh")
+library("waveslim")
+
+# select number of points (multiple of 2):
+df_s <- df[sample(nrow(df), 128), ]
+df_s <- df_s[order(df_s[,2]),]
+
+x <- df_s[, 2]
+y1 <- df_s[, 1]
+
+y1wd <- wd(y1, filter.number = 1, family="DaubExPhase") # select HAAR wavelets
+y1ws <- wr(threshold(y1wd, policy = "manual", type = "hard", levels = 0:6, value = 2.75))
+
+plot(df[,2],df[,1], xlim=c(0,max(t)), ylim=c(min(r_lower)-2,max(r_upper)+2), main="Haar wavelet fit",xlab = "RI", ylab = "AL")
+lines(x, y1ws, col='red')
+legend(x = 2.8, y = 15, # Coordinates
+       legend = c("r_hat", "Data point"),
+ col=c("red", "black"), lty=1, cex=0.6)
+legend(2.5, -15, "Threshold = 2.75, levels = 0:6", cex = 0.6)
+
+```
+## 21.7 7 Analysis

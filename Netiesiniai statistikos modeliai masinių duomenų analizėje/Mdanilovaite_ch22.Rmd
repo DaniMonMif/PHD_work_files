@@ -1,0 +1,170 @@
+---
+title: "MDanilovaite_ch22"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+## 22.13 3 Exercise
+
+Download the spam data from:
+http://www-stat.stanford.edu/∼tibs/ElemStatLearn/index.html
+The data file can also be found on the course web page. The data contain 57 covariates relating to email messages. Each email message was
+classified as spam (Y=1) or not spam (Y=0). The outcome Y is the last
+column in the file. The goal is to predict whether an email is spam or
+not.
+(a) Construct classification rules using (i) LDA, (ii) QDA, (iii) logistic
+regression, and (iv) a classification tree. For each, report the observed
+misclassification error rate and construct a 2-by-2 table of the form
+
+h(x)=0 
+h(x)=1
+Y = 0 ?? ??
+Y = 1 ?? ??
+(b) Use 5-fold cross-validation to estimate the prediction accuracy of
+LDA and logistic regression.
+(c) Sometimes it helps to reduce the number of covariates. One strategy
+is to compare Xi for the spam and email group. For each of the 57
+covariates, test whether the mean of the covariate is the same or different
+between the two groups. Keep the 10 covariates with the smallest pvalues. Try LDA and logistic regression using only these 10 variables
+
+
+```{r 22_13_3, echo=FALSE}
+# read dataset and select columns:
+library(MASS)
+library(caret)
+library(rpart)
+library(dplyr)
+
+# read dataset and select columns:
+#readLines("https://www.stat.cmu.edu/~larry/all-of-statistics/=data/spam.dat", n=50)
+df <- read.table( "https://www.stat.cmu.edu/~larry/all-of-statistics/=data/spam.dat", header = FALSE, fill = TRUE, sep = ' ')
+
+# separate to training and test
+set.seed(123)
+indexes <- createDataPartition(df[,58], p = .70, list = F)
+train <- df[indexes, ]
+test <- df[-indexes, ]
+
+# LDA classifier
+fit_lda <- lda(V58~., data = train)
+pred_lda <- predict(fit_lda, test[,-58])
+confusionMatrix(pred_lda$class, as.factor(test$V58))
+
+# QDA
+fit_qda <- qda(V58~., data = train)
+pred_qda <- predict(fit_qda, test[,-58])
+confusionMatrix(pred_qda$class, as.factor(test$V58))
+
+# Logistic Regression
+fit_lr <- glm(V58 ~., data = train, family = "binomial")
+pred_lr <- predict(fit_lr, test, type = "response")
+pred_lr_rd <- ifelse(pred_lr > 0.5, 1, 0)
+confusionMatrix(as.factor(pred_lr_rd), as.factor(test$V58))
+
+# Classification tree
+fit_tree <- rpart(V58 ~., data = train, method = 'class')
+pred_tree <- predict(fit_tree, test, type = 'class')
+confusionMatrix(pred_tree, as.factor(test$V58))
+
+# Crossvalidation
+ctrl <- trainControl(method = "cv", number = 5)
+
+# LDA
+model_lda <- train(train[,-58], as.factor(train[,58]), method = "lda", trControl = ctrl)
+
+# Logistic regression
+model_lr <- train(train[,-58], as.factor(train[,58]), method = "glm", trControl = ctrl)
+
+set_1 <- subset(df, V58 == 1)
+set_0 <- subset(df, V58 == 0)
+
+tmp=c()
+
+# Feature design
+for (i in 1:(ncol(df)-1))
+  {
+    t <-t.test(set_0[,i], set_1[,i], alternative = "two.sided", var.equal = FALSE)
+
+    tmp <- rbind(tmp, c(i, t$p.value))
+  } 
+
+tmp <- tmp[order(tmp[,2],decreasing = FALSE),]
+tmp <- tmp[c(1:10),]
+
+df_10 <- df[,c(tmp[,1],58)]
+# separate to training and test
+set.seed(123)
+indexes <- createDataPartition(df_10[,11], p = .70, list = F)
+train <- df_10[indexes, ]
+test <- df_10[-indexes, ]
+
+# LDA classifier
+fit_lda <- lda(V58~., data = train)
+pred_lda <- predict(fit_lda, test[,-11])
+confusionMatrix(pred_lda$class, as.factor(test$V58))
+
+# Logistic Regression
+fit_lr <- glm(V58 ~., data = train, family = "binomial")
+pred_lr <- predict(fit_lr, test, type = "response")
+pred_lr_rd <- ifelse(pred_lr > 0.5, 1, 0)
+confusionMatrix(as.factor(pred_lr_rd), as.factor(test$V58))
+```
+## 22.13 6 Exercise
+
+Use VC theory to get a confidence interval on the true error rate of the
+LDA classifier for the iris data (from the book web site) (does not exists anymore).
+
+Number of training points that can be classified exactly is VC dimension:
+ -Measures relevant size of hypothesis space, as with decision trees with k leaves
+
+```{r 22_13_6, echo=FALSE}
+library(MASS)
+library(caret)
+
+# read dataset and select columns:
+readLines("https://www.stat.cmu.edu/~larry/all-of-statistics/=data/spam.dat", n=50)
+df <- read.table( "https://www.stat.cmu.edu/~larry/all-of-statistics/=data/spam.dat", header = FALSE, fill = TRUE, sep = ' ')
+
+# LDA classifier
+set.seed(123)
+indexes <- createDataPartition(df[,58], p = .90, list = F)
+train <- df[indexes, ]
+test <- df[-indexes, ]
+fit_lda <- lda(V58~., data = train)
+coef(fit_lda)
+pred_lda <- predict(fit_lda, test[,-58])
+
+# missclassification error rate
+false_positives = sum((pred_lda$class == 1) & (test[,58] == 0))
+false_negatives = sum((pred_lda$class == 0) & (test[,58] == 1))
+
+L_h <- (false_positives + false_negatives) / nrow(test)
+
+# declare variables
+alpha <- 0.05
+n <- nrow(df)
+# vc for linear classifier
+vc_dim <- ncol(df) # features + 1 -> in this case 58th column is class
+
+# theorem 23.21
+epsilon <- (32 / n) * log( 8 *((n ^ vc_dim) + 1) / alpha)
+epsilon <- sqrt(epsilon)
+print(epsilon)
+print(L_h)
+print(L_h - epsilon)
+print(L_h + epsilon) # error interval too large -> rate should be in [0,1)
+
+# reduced vc to 10
+epsilon <- (32 / n) * log( 8 *((n ^ 10) + 1) / alpha)
+epsilon <- sqrt(epsilon)
+print(epsilon)
+print(L_h)
+print(L_h - epsilon)
+print(L_h + epsilon) # conf interval too large -> rate should be in [0,1)
+
+```

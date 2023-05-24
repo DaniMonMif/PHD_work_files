@@ -1,0 +1,380 @@
+---
+title: "MDanilovaite_ch15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## 15.6 4 Exercise
+
+Task:
+The New York Times (January 8, 2003, page A12) reported the following
+data on death sentencing and race, from a study in Maryland.
+
+Analyze the data using the tools from this chapter. Interpret the results.
+Explain why, based only on this information, you can’t make causal
+conclusions. (The authors of the study did use much more information
+in their full report.)
+
+Solution:
+1. With provided data, initial conclusion could be made that race influences death sentencing.
+To test this, hypotheses to check for independence were formed:
+  H0 : Race and Death sentence are independant
+  H1 : Race and Death sentence are not independent
+2. Likelihood ratio test statistic T was calculated, and Pearsons' test statistic for independence was performed
+
+Calculated values:
+T = 14.75
+U = 14.96
+
+p-value P(x^2 > T) = 0.0001
+p-value P(x^2 > U) = 0.0001
+
+H0 is rejected, as selected for of confidence interval = .95, p-value is 0.05, which is larger than calculated P(x^2 > T), P(x^2 > U)
+
+Validity of rejection was confirmed with calculations of strength of dependence by estimating odds ratio and log-odds ratio. Then Wald statistic and p are:
+W = 3.84
+p-value P(|Z| > W) = 0.0001
+
+H0 is rejected again.
+
+3. as seen in step 2, H0 about variable independence was rejected, thus it could be infered, that race and death sentence are related. 
+However, it is not clear under what conditions data was collected - e.g. was data collected from same prison or multiple (specific prisons could house non-violed offenders, while other could have over-represented violent offender population), or if crimes between sentenced population comparable. thus determined causal link based only on provided information cannot be used to make definite conclussions.
+
+```{r 15_6_4, echo=FALSE}
+df <- data.frame(matrix(ncol = 2, nrow = 0))
+x <- c("Death Sentence", "No Death Sentence")
+colnames(df) <- c("Death Sentence", "No Death Sentence")
+df[nrow(df) + 1,] = c(90,165)#c(14,641)
+df[nrow(df) + 1,] = c(84,307)#c(62,594)
+row.names(df) <- c("Black Victim", "White Victim")
+
+# ini variables
+n <- 0
+tmp <- 0
+T <- 0
+U <- 0
+E <- 0
+f_dregrees <- (nrow(df)-1)*(ncol(df)-1)
+
+# find n of all observations
+for (i in c(1,2))
+{
+  for (j in c(1,2))
+  {
+    n <- n + df[i,j]
+  }
+}
+
+# intermediate calculation for T
+for (i in c(1,2))
+{
+  for (j in c(1,2))
+  {
+   tmp <- tmp + df[i,j] *
+     log( (df[i,j]*n)/
+          (sum(df[i,])*sum(df[,j]))
+        )
+   #print(tmp)
+  }
+}
+
+# final T
+T <- 2*tmp
+
+tmp <- 0
+
+# intermediate calculation for U
+for (i in c(1,2))
+{
+  for (j in c(1,2))
+  {
+    E <- sum(df[i,])*sum(df[,j])/n
+    tmp <- tmp + ((df[i,j]-E)^2)/E
+    #print(tmp)
+  }
+}
+
+# final U
+U <- tmp
+
+# one tailed test, Pearson Chi Square
+print(round(T,2))
+print(round(U,2))
+print(round(pchisq(T, df=f_dregrees,lower.tail=FALSE),4))
+print(round(pchisq(U, df=f_dregrees,lower.tail=FALSE),4))
+
+# because degrees of freedom = 1, confidence interval = .95, p-value is 0.05
+# this means that H0 of independence is rejected
+
+# Uncoment to check calculated values with Pearson Chi square test
+#chi <- chisq.test(df)
+#print(chi)
+
+#knitr::kable(head(df[,]), "pipe")
+
+# strength of dependence calculation
+
+odds_r <- (df[1,1]*df[2,2])/(df[1,2]*df[2,1])
+l_odds_r <- log(odds_r)
+se_l_odds_r <- sqrt((1/df[1,1])+(1/df[1,2])+(1/df[2,1])+(1/df[2,2]))
+se_odds_r <- odds_r*se_l_odds_r
+
+W <- l_odds_r/se_l_odds_r
+
+print(round(W,2))
+print(round(pnorm(W, lower.tail = FALSE),4))
+
+```
+
+## 15.6 5 Exercise
+
+Task:
+Analyze the data on the variables Age and Financial Status from:
+https://www.stat.cmu.edu/~larry/all-of-statistics/=data/montana.dat
+
+Solution:
+1. Hipotheses about independence were formed:
+  H0: age and financial status are independent
+  H1: age and financial status are not independent
+  
+2. Calculated statistics:
+T = 22.06
+U = 20.68
+p-value log likelihood = 0.0002
+p-value Pearson = 0.0004
+
+H0 was rejected, as calculated statistics when confidence interval = .95, and p-value is 0.05 for selected interval, are smaller that 0.05.
+Thus, age and financial status correlates
+
+```{r 15_6_5, echo=FALSE}
+# read dataset and select columns:
+#readLines("https://www.stat.cmu.edu/~larry/all-of-statistics/=data/montana.dat", n=50)
+df <- read.table( "https://www.stat.cmu.edu/~larry/all-of-statistics/=data/montana.dat", header=TRUE, skip=31 )
+df = subset(df, select = -c(SEX,INC,POL,AREA,STAT) )
+
+# create contingency table:
+df = table(df)
+df<-as.data.frame.matrix(df)
+df<-df[-c(1),]
+df<-df[,-c(1)]
+
+colnames(df) <- c("worse", "same","better")
+row.names(df) <- c("under 35", "35-54", "55 and over")
+
+print(df)
+
+# two discrete variables analysis:
+# ini variables
+n <- 0
+tmp <- 0
+T <- 0
+U <- 0
+E <- 0
+f_dregrees <- (nrow(df)-1)*(ncol(df)-1)
+
+# find n of all observations
+for (i in c(1,2,3))
+{
+  for (j in c(1,2,3))
+  {
+    n <- n + df[i,j]
+  }
+}
+
+# intermediate calculation for T
+for (i in c(1,2,3))
+{
+  for (j in c(1,2,3))
+  {
+   tmp <- tmp + df[i,j] *
+     log( (df[i,j]*n)/
+          (sum(df[i,])*sum(df[,j]))
+        )
+   #print(tmp)
+  }
+}
+
+# final T
+T <- 2*tmp
+
+tmp <- 0
+
+# intermediate calculation for U
+for (i in c(1,2,3))
+{
+  for (j in c(1,2,3))
+  {
+    E <- sum(df[i,])*sum(df[,j])/n
+    tmp <- tmp + ((df[i,j]-E)^2)/E
+    #print(tmp)
+  }
+}
+
+# final U
+U <- tmp
+
+# one tailed test, Pearson Chi Square
+print(round(T,2))
+print(round(U,2))
+print(round(pchisq(T, df=f_dregrees,lower.tail=FALSE),4))
+print(round(pchisq(U, df=f_dregrees,lower.tail=FALSE),4))
+
+# because degrees of freedom = 4, confidence interval = .95, p-value is 0.05
+# this means that H0 of independence is rejected
+
+# uncomment to check calculated values with Pearson Chi square test
+#chi <- chisq.test(df)
+#print(chi)
+
+#knitr::kable(head(df[,]), "pipe")
+```
+
+## 15.6 6 Exercise
+
+Task:
+Estimate the correlation between temperature and latitude using the
+data from
+https://www.stat.cmu.edu/~larry/all-of-statistics/=data/temp.dat
+Use the correlation coefficient. Provide estimates, tests, and confidence
+intervals.
+
+Solution:
+
+Coeficient estimates were calculated. Confidence intervals were calculated and are provided below:
+Pearson correlation = -0.8480352
+95% confidence interval = [-0.9084082, -0.7530174]
+
+Spearman correlation = -0.8154035
+95% confidence interval = [-0.8964244 -0.6816441]
+
+
+```{r 15_6_6, echo=FALSE}
+# ini libraries
+if(!require(rcompanion)){
+    install.packages("rcompanion")
+    library(rcompanion)
+}
+
+# read dataset and select columns:
+#readLines("https://www.stat.cmu.edu/~larry/all-of-statistics/=data/temp.dat", n=50)
+df <- read.table( "https://www.stat.cmu.edu/~larry/all-of-statistics/=data/temp.dat", header = TRUE, fill = TRUE, sep = '\t', skip=30)
+df = subset(df, select = -c(City,Long) )
+
+# reshape df to fit 2 x n shape (chapter 14.2)
+df <- t(df)
+# data points
+n <- ncol(df)
+
+# ini variables
+alpha_2 <- (1 - 0.95)/2
+z_alpha_2 <- 1.96 # from https://www2.southeastern.edu/Academics/Faculty/dgurney/Math241/StatTopics/ZAlpha.htm
+
+# calculate pearson correlation
+rho <- cor(df[1,], df[2,],  method = "pearson", use = "complete.obs")
+
+#print(ifisherz(fisherz(rho)))
+
+# confdence interval with delta method
+theta <- 0.5 * (log(1 + rho) - log(1 - rho))
+se_theta <- 1 / sqrt(n-3)
+
+a <- theta - (z_alpha_2 / sqrt(n-3))
+b <- theta + (z_alpha_2 / sqrt(n-3))
+
+rho_min <- (exp(2*a) - 1) / (exp(2*a) + 1)
+rho_max <- (exp(2*b) - 1) / (exp(2*b) + 1)
+
+print(rho) # pearson correlation
+print(rho_min) # conf. interval lower bound
+print(rho_max) # conf. interval upper bound
+
+# confidence interval with bootstrap
+spearman_rho = cor(df[1,], df[2,],  method = "spearman", use = "complete.obs")
+
+
+print(spearman_rho) # spearman correlation
+
+n <- sum(complete.cases(df[1,], df[2,]))
+
+# bootstrapped confidence interval
+print(sort(tanh(atanh(spearman_rho) + c(-1,1)*sqrt((1+spearman_rho^2/2)/(n-3))*qnorm(p = alpha_2))))
+
+
+```
+## 15.6 7 Exercise
+
+Task:
+Test whether calcium intake and drop in blood pressure are associated.
+Use the data in
+https://www.stat.cmu.edu/~larry/all-of-statistics/=data/calcium.dat
+
+Solution:
+1. Hipotheses were formed
+  H0: calcium intake and blood pressure drop are independent
+  H1: calcium intake and blood pressure drop are not independent
+  
+2. To test hipotheses, dataset was split into two subsets, to produce two  based on 15.12 theorem -> one continuous one discrete variable
+http://www.sthda.com/english/wiki/one-way-anova-test-in-r
+
+associated
+
+
+```{r 15_6_7, echo=FALSE}
+# read dataset and select columns:
+#readLines("https://www.stat.cmu.edu/~larry/all-of-statistics/=data/calcium.dat", n=50)
+df <- read.table( "https://www.stat.cmu.edu/~larry/all-of-statistics/=data/calcium.dat", header = TRUE, fill = TRUE, sep = '\t', skip=32)
+df = subset(df, select = -c(Begin,End) )
+
+# 15.12: =================================================
+
+f1 = subset(df, df$Treatment == "Placebo")
+f1 <- f1[,2]
+f2 = subset(df, df$Treatment == "Calcium")
+f2 <- f2[,2]
+
+D_tmp <- rep(0, nrow(df)) 
+
+for (i in 1:nrow(df))
+  {
+    f1_hat <- sum(f1 <= df[i,2]) / length(f1)
+    f2_hat <- sum(f2 <= df[i,2]) / length(f2)
+    D_tmp[i] = abs(f1_hat - f2_hat)
+  }
+
+D = max(D_tmp)
+  
+n1 = length(f1)
+n2 = length(f2)
+test_statistic = sqrt(n1 * n2 / (n1 + n2)) * D
+
+# 
+H_inv <- function(t, q = test_statistic, xtol = 1e-8)
+{
+  if (t != 0) 
+  { "t must be non-zero"
+    t2 = t * t
+    j_max = round(sqrt(- log(xtol / 2) / (2 * t2) ), digits = 0)
+    jj = seq(1, j_max+1, by=1)
+
+    result <- ((1 + 2 * sum((-1)**(jj) * exp(-2 * (jj**2) * t2))) - q)**2
+  }
+}
+
+h_inv_test_statistic <- optim(1.0, H_inv, method = "BFGS" )$par
+
+print(cat('D: ',  D))
+print(cat('Test statistic: ',  test_statistic))
+print(cat('H^{-1}(test_statistic): ', h_inv_test_statistic))
+
+# compare
+# two sample Kolmogorov-Smirnov test 
+ks.test(f1, f2)
+
+# One way analysis of variance (one way ANOVA)
+res.aov <- aov(Decrease ~ Treatment, data = df)
+summary(res.aov)
+
+```
+
