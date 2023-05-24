@@ -1,0 +1,192 @@
+---
+title: "MDanilovaite_ch24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+## 24.7 5 Exercise
+
+Get the heart disease data from the book web site. Consider a Bayesian
+analysis of the logistic regression model
+P(Y = 1|X = x) = eβ0+k
+j=1 βjxj
+1 + eβ0+k
+j=1 βjxj
+.
+
+Use the flat prior f(β0,...,βk) ∝ 1. Use the Gibbs–Metropolis algorithm
+to draw a sample of size 10,000 from the posterior f(β0, β1|data). Plot
+histograms of the posteriors for the βj ’s. Get the posterior mean and a
+95 percent posterior interval for each βj .
+(b) Compare your analysis to a frequentist approach using maximum
+likelihood.
+
+```{r 24_7_5, echo=FALSE}
+
+library('pracma')
+library('locfit')
+library('caret')
+library('graphics')
+library('ramify')
+
+# read dataset and select columns:
+# readLines("https://www.stat.cmu.edu/~larry/all-of-statistics/=data/coris.dat", n=50)
+df <- read.table( "https://www.stat.cmu.edu/~larry/all-of-statistics/=data/coris.dat",fill = TRUE, skip=4,sep = ',')
+
+colnames(df) <- c("row.names","sbp","tobacco","ldl","adiposity","famhist","typea","obesity","alcohol","age","chd")
+df = subset(df, select = -c(row.names) )
+
+# innitial values
+    sigma_js <- logspace(-2, 0, 20)
+    B_likelihoods <- seq(-2, 0, by=(2/20)) 
+
+    Xp <- cbind(
+          matrix(1, nrow = ncol(df)-1, ncol = 1), 
+          t(df[,c(1,2,3,4,5,6,7,8,9)])
+                ) # bind column 
+  
+    c_0 = c()
+    c_1 = c()
+    
+    for (i in 1:nrow(df))
+    {
+      if (df[i,10] == 0)
+        {c_0 <- rbind(c_0, c(i))}
+      else
+        {c_1 <- rbind(c_1, c(i))}
+    }
+
+        # likelihood
+    likelihood <- function(beta) 
+    {
+      bx = beta * t(Xp)
+      # kur y = 0, eilute 
+      z = bx 
+      zz = bx
+      z[c_0,] <- 0
+      zz[c_1,] <- 0
+      result <- (1 - expit(-sum(z))) * expit(-sum(zz)) 
+    }
+
+    r = 0
+    # perziureti parametrus is naujo
+  for (i in 1:(length(sigma_js)))
+  {
+    set.seed(123)
+    k = 10 
+    N <- 10000
+    X = matrix(0, N+1, k)
+    X[0] = rep(0, length(k)) 
+    U = runif(N * k) 
+    U = matrix(U, N, k)
+    
+    iterator = N 
+    
+    for (j in 1:iterator)
+    {
+      B_current = X[j,] 
+         for (jj in 1:k)
+          {
+             Z = rnorm(1, sd=sigma_js[i])
+             B_proposal = B_current 
+             B_proposal[jj] = Z
+            
+             #print(likelihood(B_proposal))
+             r = min(likelihood(B_proposal) / likelihood(B_current))#, 1)
+             
+             if (U[j, jj] < r)
+              {
+                B_current[jj] = Z
+              }
+          }    
+      X[j + 1,] = B_current    
+    }
+    B = X
+
+    B_likelihoods[i] = likelihood(colMeans(B))
+  }
+
+    # ================================================================================
+    # select probability    
+    selected_sigma_j = sigma_js[which.max( B_likelihoods)]#sigma_js[argmax(B_likelihoods)]
+    print(selected_sigma_j)
+
+    set.seed(123)
+    k = 10 
+    N <- 10000
+    X = matrix(0, N+1, k)
+    X[0] = rep(0, length(k)) 
+    U = runif(N * k) 
+    U = matrix(U, N, k)
+    
+    iterator = N 
+    
+    for (j in 1:iterator)
+    {
+      B_current = X[j,] 
+         for (jj in 1:k)
+          {
+             Z = rnorm(1, sd=selected_sigma_j)
+             B_proposal = B_current 
+             B_proposal[jj] = Z
+            
+             r = min(likelihood(B_proposal) / likelihood(B_current))#, 1)
+             
+             if (U[j, jj] < r)
+              {
+                B_current[jj] = Z
+              }
+          }    
+      X[j + 1,] = B_current    
+    }
+    B_s = X
+    
+    posterior_mean = colMeans(B_s)
+    posterior_confidence_bounds = apply(B_s,2,quantile,probs=c(0.025,0.975))
+    print(posterior_mean)
+    print(posterior_confidence_bounds)
+    
+    library(Hmisc)
+    #hist(B_s[,1], breaks = 50)
+    #par(mfrow=c(2,5))
+    hist(B_s[,1], breaks = 50)
+    hist(B_s[,2], breaks = 50)
+    hist(B_s[,3], breaks = 50)
+    hist(B_s[,4], breaks = 50)
+    hist(B_s[,5], breaks = 50)
+    hist(B_s[,6], breaks = 50)
+    hist(B_s[,7], breaks = 50)
+    hist(B_s[,8], breaks = 50)
+    hist(B_s[,9], breaks = 50)
+    hist(B_s[,10], breaks = 50)
+# b ==============================================================================
+    x0 <- rep(0, 10)
+    # https://cran.r-project.org/web/packages/fitdistrplus/vignettes/Optimalgo.html
+    optim_rez <- optim(x0,likelihood, method="BFGS", control=list(fnscale=-1))$par
+    barplot(optim_rez)
+    barplot(posterior_mean)
+
+```
