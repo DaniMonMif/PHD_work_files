@@ -214,6 +214,8 @@ SPI_list = []
 CPPS_list = [] 
 RNR_list = []
 
+i = 0
+
 rootdir = 'C:/bulk_insert'
 # Go through all the wave files in the folder and measure features
 for subdir, dirs, files in os.walk(rootdir):
@@ -222,6 +224,8 @@ for subdir, dirs, files in os.walk(rootdir):
         #print(os.path.join(subdir, file))
 
         if '.csv' not in wave_file:
+            i = i +1
+            print(i)
             sound = parselmouth.Sound(wave_file)
             sound =sound.resample(new_frequency=44100,precision=100)
             duration = 0.04 #sound.duration
@@ -248,7 +252,7 @@ for subdir, dirs, files in os.walk(rootdir):
                 hnr_list.append(hnr)
                 local_jitter_list.append(localJitter)
                 local_shimmer_list.append(localShimmer)
-                gne_list.append(meanGNE)
+                #gne_list.append(meanGNE)
                 num_pounts_list.append(num_points)
                 f1_list.append(f1)
                 f2_list.append(f2)
@@ -269,13 +273,14 @@ for subdir, dirs, files in os.walk(rootdir):
 df = pd.DataFrame(np.column_stack([file_list,window_no, num_pounts_list, 
                                    f1_list, f1_a_list, f2_list, f2_a_list, 
                                    f_dif_list, mean_F0_list, hnr_list, local_jitter_list,
-                                   local_shimmer_list, gne_list,mfcc_list, lpc_matrix_list, lpc_formants_list, SPI_list, CPPS_list, RNR_list]) ,                           
+                                   local_shimmer_list, #gne_list,
+                                   mfcc_list, lpc_matrix_list, lpc_formants_list, SPI_list, CPPS_list, RNR_list]) ,                           
 columns=['voiceID', 'windowNo',
          'num_points', 'F1','F1_A', 
          'F2','F2_A', 'F1_f2_diff', 
          'meanF0Hz', 'HNR', 'lJitter',
-         'lShimmer','GNE',
-         'mfcc1','mfcc2','mfcc3','mfcc4','mfcc5','mfcc6','mfcc7','mfcc8','mfcc9','mfcc10','mfcc11'
+         'lShimmer',#'GNE',
+         'mfcc1','mfcc2','mfcc3','mfcc4','mfcc5','mfcc6','mfcc7','mfcc8','mfcc9','mfcc10','mfcc11',
          'lpc1','lpc2','lpc3','lpc4','lpc5','lpc6','lpc7','lpc8','lpc9','lpc10','lpc11','lpc12','lpc13','lpc14','lpc15','lpc16','lpc17','lpc18','lpc19','lpc20','lpc21','lpc22','lpc23','lpc24','lpc25','lpc26','lpc27','lpc28',
          'lpc_f1','lpc_f2','lpc_f3','lpc_f4','lpc_f5','lpc_f6','lpc_f7','lpc_f8','lpc_f9','lpc_f10','lpc_f11','lpc_f12','lpc_f13','lpc_f14',
          'SPI','CPPS','RNR'
