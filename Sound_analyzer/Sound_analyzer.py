@@ -264,7 +264,7 @@ for subdir, dirs, files in os.walk(rootdir):
                 lpc_formants_list.append(lpc_formants)
                 SPI_list.append(SPI)
                 CPPS_list.append(CPPS)
-                RNR_list.append(RNR)
+                RNR_list.append(RNR) # cia reikia paziureti kuris stulpelis isstumia lpc_f per daug
                 x += 0.02
 
 #print(len(file_list))
