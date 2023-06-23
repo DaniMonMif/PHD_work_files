@@ -312,13 +312,20 @@ https://www.stat.cmu.edu/~larry/all-of-statistics/=data/calcium.dat
 
 Solution:
 1. Hipotheses were formed
-  H0: calcium intake and blood pressure drop are independent
-  H1: calcium intake and blood pressure drop are not independent
+  H0: calcium intake and blood pressure drop are not independent (F1 = F2)
+  H1: calcium intake and blood pressure drop are independent (F1 <> F2)
   
-2. To test hipotheses, dataset was split into two subsets, to produce two  based on 15.12 theorem -> one continuous one discrete variable
-http://www.sthda.com/english/wiki/one-way-anova-test-in-r
+2. To test hipotheses, dataset was split into two subsets, to calculate Empirical distributions F1 and F2, used for two-sample Kolmogorov-Smirnov 
+D statistic was calculated:
+D:  0.4090909
+D statistic was used to calculate Test statistic, under which F1 = F2:
+Test statistic:  0.9362817
 
-associated
+Following 15.12 theorem, inverse of test statistic was calculated: 
+H^{-1}(test_statistic):  1.312709
+
+
+3. H^{-1}(test_statistic) > Test statistic, thus H0 is accepted - calcium intake and blood pressure are not independent.
 
 
 ```{r 15_6_7, echo=FALSE}
