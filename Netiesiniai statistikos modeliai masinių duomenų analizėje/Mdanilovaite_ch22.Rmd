@@ -32,6 +32,17 @@ is to compare Xi for the spam and email group. For each of the 57
 covariates, test whether the mean of the covariate is the same or different
 between the two groups. Keep the 10 covariates with the smallest pvalues. Try LDA and logistic regression using only these 10 variables
 
+Results:
+Confusion Matrix and Statistics
+
+          Reference
+Prediction   0   1
+         0 778 120
+         1  51 431
+         
+         
+
+
 
 ```{r 22_13_3, echo=FALSE}
 # read dataset and select columns:
@@ -79,6 +90,9 @@ model_lda <- train(train[,-58], as.factor(train[,58]), method = "lda", trControl
 
 # Logistic regression
 model_lr <- train(train[,-58], as.factor(train[,58]), method = "glm", trControl = ctrl)
+
+print(model_lda)
+print(model_lr)
 
 set_1 <- subset(df, V58 == 1)
 set_0 <- subset(df, V58 == 0)
